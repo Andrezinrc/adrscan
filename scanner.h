@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 
 #define MAX_SIGNATURES 100
 #define MAX_PATTERN_LEN 256
@@ -15,6 +16,9 @@
 #define GREEN   "\033[1;32m"
 #define RESET   "\033[0m"
 
+extern int total_files_scanned;
+extern int total_threats_found;
+extern clock_t scan_start, scan_end;
 extern uint8_t eicar_signature[EICAR_SIZE];
 
 typedef struct {
@@ -30,6 +34,7 @@ int load_signatures(const char* rules_file);
 int scan_file_rules(const char* filename);
 void create_test_file();
 void run_rules_test(const char* filename);
+void show_scan_summary(void);
 void scan_directory(const char* path);
 
 #endif

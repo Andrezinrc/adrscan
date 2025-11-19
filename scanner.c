@@ -65,6 +65,8 @@ int load_signatures(const char* rules_file) {
 }
 
 int scan_file_rules(const char* filename) {
+    total_files_scanned++;
+
     FILE* file = fopen(filename, "rb");
     if (!file) {
         printf("Nao foi possível abrir o arquivo '%s'\n", filename);
@@ -99,7 +101,8 @@ int scan_file_rules(const char* filename) {
             }
         }
     }
-   
+    
+    total_threats_found += threats_found;
     return threats_found;
 }
 
@@ -144,7 +147,7 @@ void run_rules_test(const char* filename) {
         };
         
         for (int i=0;test_files[i]!=NULL;i++) {
-            printf("Testando: %s\n", test_files[i]);
+            //printf("Testando: %s\n", test_files[i]);
             int result = scan_file_rules(test_files[i]);
             if (result>0) {
                 printf(RED "Ameacas detectadas: %d\n\n" RESET, result);
@@ -158,8 +161,8 @@ void run_rules_test(const char* filename) {
 void scan_directory(const char* path) {
     DIR* d = opendir(path);
     if(!d) {
-        return;
         printf("Não foi possivel abrir diretorio: %s\n", path);
+        return;
     }
     
     struct dirent* entry;
@@ -176,18 +179,17 @@ void scan_directory(const char* path) {
             continue;
         }
         if(S_ISDIR(st.st_mode)){
-            printf(GREEN "Entrando em: %s\n" RESET, fullpath);
+            //printf(GREEN "Entrando em: %s\n" RESET, fullpath);
             scan_directory(fullpath);
         } else {
-            printf("Testando arquivo: %s\n", fullpath);
+            //printf("Testando arquivo: %s\n", fullpath);
             int result = scan_file_rules(fullpath);
             if(result>0){
-                printf(RED "Ameacas detactadas: %d\n\n" RESET, result);
-            } else {
-                printf(GREEN "Arquivo limpo.\n" RESET);
+                printf(RED "[!] Ameacas detactadas: %d\n\n" RESET, result);
             }
         }
     }
     closedir(d);
 }
+
 
