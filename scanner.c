@@ -72,37 +72,58 @@ int scan_file_rules(const char* filename) {
         printf("Nao foi possível abrir o arquivo '%s'\n", filename);
         return -1;
     }
-    
-    uint8_t buffer[4096];
-    size_t bytes_read = fread(buffer, 1, sizeof(buffer), file);
-    fclose(file);
 
-    int threats_found=0;
-    if (bytes_read>=EICAR_SIZE) {
-        for (size_t i=0;i<=bytes_read - EICAR_SIZE;i++) {
-            if (memcmp(&buffer[i], eicar_signature, EICAR_SIZE)==0) {
-                printf(RED "Ameaça detectada! Regra: EICAR | Arquivo: %s\n" RESET, filename);
-                threats_found++;
-                break;
+    const size_t CHUNK = 4096;
+
+    uint8_t buffer[CHUNK + MAX_PATTERN_LEN];
+    size_t overlap = MAX_PATTERN_LEN - 1;
+    size_t preserved=0;
+    size_t bytes_read=0;
+    size_t buffer_size=0;
+
+    int threats_found = 0;
+
+    while ((bytes_read = fread(buffer + preserved, 1, CHUNK, file)) > 0) {
+
+        buffer_size = preserved + bytes_read;
+
+        if (buffer_size >= EICAR_SIZE) {
+            for (size_t i=0;i<=buffer_size - EICAR_SIZE;i++) {
+                if (memcmp(&buffer[i], eicar_signature, EICAR_SIZE) == 0) {
+                    printf(RED "Ameaca detectada! Regra: EICAR | Arquivo: %s\n" RESET, filename);
+                    threats_found++;
+                    break;
+                }
             }
         }
-    }
-    
-    for (int sig_idx=0;sig_idx < signature_count;sig_idx++) {
-        if (bytes_read < signatures[sig_idx].pattern_len) {
-            continue;
+
+        for (int sig_idx=0;sig_idx < signature_count;sig_idx++) {
+            size_t pat_len = signatures[sig_idx].pattern_len;
+
+            if (buffer_size < pat_len)
+                continue;
+
+            for (size_t i=0;i<=buffer_size - pat_len; i++) {
+                if (memcmp(&buffer[i], signatures[sig_idx].pattern, pat_len)==0) {
+                    printf(RED "Ameaca detectada! Regra: %s | Arquivo: %s\n" RESET,
+                        signatures[sig_idx].name, filename);
+                    threats_found++;
+                    break;
+                }
+            }
         }
         
-        for (size_t i=0;i<=bytes_read - signatures[sig_idx].pattern_len;i++) {
-            if (memcmp(&buffer[i], signatures[sig_idx].pattern, signatures[sig_idx].pattern_len)==0) {
-                printf(RED "Ameaça detectada! Regra: %s | Arquivo: %s\n" RESET, signatures[sig_idx].name, filename);
-                threats_found++;
-                break;
-            }
+        if (buffer_size >= overlap) {
+            preserved = overlap;
+            memcpy(buffer, buffer + (buffer_size - overlap), overlap);
+        } else {
+            preserved = buffer_size;
         }
     }
-    
+
+    fclose(file);
     total_threats_found += threats_found;
+
     return threats_found;
 }
 
